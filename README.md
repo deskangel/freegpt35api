@@ -21,6 +21,12 @@ Utilize the unlimited free **GPT-3.5-Turbo** API service provided by the login-f
 npm install
 node app.js
 ```
+
+If you need to specify the port and SOCKS proxy, you can set it like this:
+```bash
+node app.js --port=5678 --proxy=socks5://127.0.0.1:40000
+```
+
 ### Docker
 
 ```bash
@@ -123,6 +129,8 @@ curl http://127.0.0.1:3040/v1/chat/completions \
 ## Compatibility
 
 You can use it in any app, such as OpenCat, Next-Chat, Lobe-Chat, Bob, etc. Feel free to fill in an **API Key** with any string, for example, `gptyyds`.
+
+For Android users, you also can choose [DaChatAI v1.3.0+](https://play.google.com/store/apps/details?id=com.deskangel.openai.dachatai.dachatai) to keep track of the conversation's context.
 
 ### Bob
 ![Bob](./img/bob.png)
