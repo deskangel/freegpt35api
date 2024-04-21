@@ -4,7 +4,7 @@ const axios = require("axios");
 const https = require("https");
 const tls = require("tls");
 
-const { randomUUID } = require("crypto");
+const { randomUUID, randomInt, createHash } = require("crypto");
 const { SocksProxyAgent } = require("socks-proxy-agent");
 
 tls.DEFAULT_MIN_VERSION = "TLSv1.2";
@@ -28,6 +28,8 @@ process.argv.forEach((val, index) => {
 
 // Initialize global variables to store the session token and device ID
 let token;
+let proofToken;
+
 // openai uses `device id` and `conversation id` to trace the conversion
 let oaiDeviceId;
 let keepConversation = false;
@@ -115,24 +117,60 @@ if (proxy) {
 // Setup axios instance for API requests with predefined configurations
 const axiosInstance = axios.create(axiosConfig);
 
+// Generate a proof token for the OpenAI API
+function GenerateProofToken(seed, diff, userAgent) {
+  const cores = [8, 12, 16, 24];
+  const screens = [3000, 4000, 6000];
+
+  const core = cores[randomInt(0, cores.length)];
+  const screen = screens[randomInt(0, screens.length)];
+
+  const now = new Date(Date.now() - 8 * 3600 * 1000);
+  const parseTime = now.toUTCString().replace("GMT", "GMT-0500 (Eastern Time)");
+
+  const config = [core + screen, parseTime, 4294705152, 0, userAgent];
+
+  const diffLen = diff.length / 2;
+
+  for (let i = 0; i < 100000; i++) {
+    config[3] = i;
+    const jsonData = JSON.stringify(config);
+    const base = Buffer.from(jsonData).toString("base64");
+    const hashValue = createHash("sha3-512")
+      .update(seed + base)
+      .digest();
+
+    if (hashValue.toString("hex").substring(0, diffLen) <= diff) {
+      const result = "gAAAAAB" + base;
+      return result;
+    }
+  }
+
+  const fallbackBase = Buffer.from(`"${seed}"`).toString("base64");
+  return "gAAAAABwQ8Lk5FbGpA2NcR9dShT6gYjU7VxZ4D" + fallbackBase;
+}
+
 // Function to get a token from the OpenAI API
 async function getNewTokenId() {
-  const headers = {
-    "Oai-Device-Id": oaiDeviceId,
-    "Oai-Language": "en-US",
-    "User-Agent": "Mozilla/5.0",
-  };
-
   const response = await axiosInstance.post(
     `${baseUrl}/backend-anon/sentinel/chat-requirements`,
     {},
     {
-      headers: headers,
+      headers: {
+        "Oai-Device-Id": oaiDeviceId,
+        "Oai-Language": "en-US",
+        "User-Agent": "Mozilla/5.0",
+      },
     }
   );
 
   token = response.data.token;
   console.log(`New Token: ${token}\n`);
+
+  let pow = response.data.proofofwork;
+  proofToken = GenerateProofToken(pow.seed, pow.difficulty);
+
+  console.log(`Proof Token: ${proofToken}\n`);
 }
 
 // Middleware to enable CORS and handle pre-flight requests
@@ -199,6 +237,7 @@ async function handleChatCompletion(req, res) {
         "Oai-Language": "en-US",
         "User-Agent": "Mozilla/5.0",
         "Openai-Sentinel-Chat-Requirements-Token": token,
+        "openai-sentinel-proof-token": proofToken,
       },
     });
   } catch (error) {
