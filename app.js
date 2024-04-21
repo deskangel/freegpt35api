@@ -14,7 +14,7 @@ tls.DEFAULT_MAX_VERSION = "TLSv1.3";
 let port = 3040;
 const baseUrl = "https://chat.openai.com";
 const apiUrl = `${baseUrl}/backend-anon/conversation`;
-const refreshInterval = 60000; // Interval to refresh token in ms
+const refreshInterval = 1200000; // Interval to refresh token in ms
 const errorWait = 15000; // Wait time in ms after an error
 
 let proxy = null;
@@ -151,26 +151,37 @@ function GenerateProofToken(seed, diff, userAgent) {
 }
 
 // Function to get a token from the OpenAI API
-async function getNewTokenId() {
-  const response = await axiosInstance.post(
-    `${baseUrl}/backend-anon/sentinel/chat-requirements`,
-    {},
-    {
-      headers: {
-        "Oai-Device-Id": oaiDeviceId,
-        "Oai-Language": "en-US",
-        "User-Agent": "Mozilla/5.0",
-      },
-    }
-  );
+async function getNewTokenIds() {
+  let response;
+  try {
+    console.log("Prepare a new token for the following request.......");
+
+    response = await axiosInstance.post(
+      `${baseUrl}/backend-anon/sentinel/chat-requirements`,
+      {},
+      {
+        headers: {
+          "Oai-Device-Id": oaiDeviceId,
+          "Oai-Language": "en-US",
+          "User-Agent": "Mozilla/5.0",
+        },
+      }
+    );
+  } catch (error) {
+    console.error("---Failed to renew the tokens, error: ${error.message}.");
+    console.log("Continue using the old ones.");
+
+    return false;
+  }
 
   token = response.data.token;
-  console.log(`New Token: ${token}\n`);
+  console.log(`New Token: ${token}`);
 
   let pow = response.data.proofofwork;
   proofToken = GenerateProofToken(pow.seed, pow.difficulty);
-
   console.log(`Proof Token: ${proofToken}\n`);
+
+  return true;
 }
 
 // Middleware to enable CORS and handle pre-flight requests
@@ -223,8 +234,7 @@ async function handleChatCompletion(req, res) {
     console.log(`composing body error: ${error.message}, req.body.messages`);
   }
 
-  // console.log(body);
-  // console.log(req.body.messages);
+  await getNewTokenIds();
 
   let response;
   try {
@@ -371,15 +381,6 @@ async function handleChatCompletion(req, res) {
     );
     res.end();
   }
-
-  try {
-    console.log("Prepare a new token for next request.......");
-    await getNewTokenId();
-  } catch (error) {
-    console.log(
-      "---Failed to renew the token id, error: ${error.message}. Continue using the old one."
-    );
-  }
 }
 
 // Initialize Express app and use middlewares
@@ -395,7 +396,7 @@ app.use((req, res) =>
   res.status(404).send({
     status: false,
     error: {
-      message: `The requested endpoint was not found. please make sure to use "http://localhost:${port}/v1" as the base URL.`,
+      message: `The requested endpoint was not found. please make sure to use "http://host:${port}/v1" as the base URL.`,
       type: "invalid_request_error",
     },
   })
@@ -412,37 +413,31 @@ app.listen(port, () => {
     delete process.env.HTTPS_PROXY;
   }
 
+  let errorRetryCount = 0;
   setTimeout(async () => {
     while (true) {
-      try {
-        console.log(`Device Id: ${oaiDeviceId}\n`);
-        console.log("Request new token......\n");
+      console.log(`Device Id: ${oaiDeviceId}\n`);
 
-        await getNewTokenId();
-
-        console.info(
-          `Waiting for ${refreshInterval / 60000} minute to get a new token id`
-        );
+      let result = await getNewTokenIds();
+      if (result) {
+        const interval = refreshInterval / 60000;
+        console.info(`Waiting for ${interval} minute to get a new token id`);
 
         await wait(refreshInterval);
-      } catch (error) {
-        // console.error(error);
-        console.error(`Error refreshing token id, error: ${error.message}`);
-
+      } else {
+        errorRetryCount++;
+        const interval = errorWait + Math.floor(errorRetryCount / 5) * 5 * 1000;
         if (token) {
           console.info(`Continue using the old token: ${token}`);
-          console.info(`Retrying in ${(errorWait * 10) / 1000} seconds...`);
-          await wait(errorWait * 10);
+          console.info(`Retrying in ${(interval * 10) / 1000} seconds...`);
+          await wait(interval * 10);
         } else {
           renewDeviceId();
           console.info(
-            `Retrying in ${errorWait / 1000} seconds with a new device id...`
+            `Retrying in ${interval / 1000} seconds with a new device id...`
           );
-          await wait(errorWait);
+          await wait(interval);
         }
-
-        // console.error("If this error persists, your country may not be supported yet.");
-        // console.error("If your country was the issue, please consider using a U.S. VPN.");
       }
     }
   }, 0);
