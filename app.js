@@ -169,7 +169,9 @@ async function getNewTokenIds() {
     );
   } catch (error) {
     console.error("---Failed to renew the tokens, error: ${error.message}.");
-    console.log("Continue using the old ones.");
+    if (token) {
+      console.log("Continue using the old ones.");
+    }
 
     return false;
   }
