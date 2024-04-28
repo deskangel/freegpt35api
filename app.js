@@ -267,6 +267,7 @@ async function handleChatCompletion(req, res) {
   }
 
   // console.log('posted request');
+  console.log('----- answer received');
 
   // Set the response headers based on the request type
   if (req.body.stream) {
@@ -415,32 +416,32 @@ app.listen(port, () => {
     delete process.env.HTTPS_PROXY;
   }
 
-  let errorRetryCount = 0;
-  setTimeout(async () => {
-    while (true) {
-      console.log(`Device Id: ${oaiDeviceId}\n`);
+  // let errorRetryCount = 0;
+  // setTimeout(async () => {
+  //   while (true) {
+  //     console.log(`Device Id: ${oaiDeviceId}\n`);
 
-      let result = await getNewTokenIds();
-      if (result) {
-        const interval = refreshInterval / 60000;
-        console.info(`Waiting for ${interval} minute to get a new token id`);
+  //     let result = await getNewTokenIds();
+  //     if (result) {
+  //       const interval = refreshInterval / 60000;
+  //       console.info(`Waiting for ${interval} minute to get a new token id`);
 
-        await wait(refreshInterval);
-      } else {
-        errorRetryCount++;
-        const interval = errorWait + Math.floor(errorRetryCount / 5) * 5 * 1000;
-        if (token) {
-          console.info(`Continue using the old token: ${token}`);
-          console.info(`Retrying in ${(interval * 10) / 1000} seconds...`);
-          await wait(interval * 10);
-        } else {
-          renewDeviceId();
-          console.info(
-            `Retrying in ${interval / 1000} seconds with a new device id...`
-          );
-          await wait(interval);
-        }
-      }
-    }
-  }, 0);
+  //       await wait(refreshInterval);
+  //     } else {
+  //       errorRetryCount++;
+  //       const interval = errorWait + Math.floor(errorRetryCount / 5) * 5 * 1000;
+  //       if (token) {
+  //         console.info(`Continue using the old token: ${token}`);
+  //         console.info(`Retrying in ${(interval * 10) / 1000} seconds...`);
+  //         await wait(interval * 10);
+  //       } else {
+  //         renewDeviceId();
+  //         console.info(
+  //           `Retrying in ${interval / 1000} seconds with a new device id...`
+  //         );
+  //         await wait(interval);
+  //       }
+  //     }
+  //   }
+  // }, 0);
 });
