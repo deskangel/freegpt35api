@@ -87,23 +87,30 @@ async function* StreamCompletion(data) {
 const axiosConfig = {
   headers: {
     Accept: "*/*",
-    "Accept-Language": "en-US,en;q=0.9,zh-CN;q=0.8,zh;q=0.7,en-CN;q=0.6",
     "Accept-Encoding": "gzip, deflate, br, zstd",
+    "Accept-Language": "en-US,en;q=0.9,zh-CN;q=0.8,zh;q=0.7,en-CN;q=0.6",
     "Cache-Control": "no-cache",
     "Content-Type": "application/json",
     "Oai-Language": "en-US",
-    origin: baseUrl,
-    referer: baseUrl,
-    pragma: "no-cache",
-    "sec-ch-ua":
-      '"Google Chrome";v="123", "Not:A-Brand";v="8", "Chromium";v="123"',
-    "sec-ch-ua-mobile": "?0",
-    "sec-ch-ua-platform": '"Windows"',
-    "sec-fetch-dest": "empty",
-    "sec-fetch-mode": "cors",
-    "sec-fetch-site": "same-origin",
+    Origin: baseUrl,
+    Pragma: "no-cache",
+    Priority: "u=1,i",
+    Referer: baseUrl,
+    "Sec-Ch-Ua":
+      '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
+    "Sec-Ch-Ua-Arch": "x86",
+    "Sec-Ch-Ua-Bitness": "64",
+    "Sec-Ch-Ua-Full-Version": "124.0.6367.62",
+    "Sec-Ch-Ua-Full-Version-List":
+      '"Chromium";v="124.0.6367.62", "Google Chrome";v="124.0.6367.62", "Not-A.Brand";v="99.0.0.0"',
+    "Sec-Ch-Ua-Mobile": "?0",
+    "Sec-Ch-Ua-platform": '"macOS"',
+    "Sec-Ch-Ua-Platform-Version": "14.4.1",
+    "Sec-Fetch-Dest": "empty",
+    "Sec-Fetch-Mode": "cors",
+    "Sec-Fetch-Site": "same-origin",
     "User-Agent":
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
   },
 };
 
@@ -163,12 +170,13 @@ async function getNewTokenIds() {
         headers: {
           "Oai-Device-Id": oaiDeviceId,
           "Oai-Language": "en-US",
-          "User-Agent": "Mozilla/5.0",
+          "User-Agent":
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
         },
       }
     );
   } catch (error) {
-    console.error("---Failed to renew the tokens, error: ${error.message}.");
+    console.error(`---Failed to renew the tokens, error: ${error.message}.`);
     if (token) {
       console.log("Continue using the old ones.");
     }
@@ -247,7 +255,8 @@ async function handleChatCompletion(req, res) {
         Accept: "text/event-stream",
         "Oai-Device-Id": oaiDeviceId,
         "Oai-Language": "en-US",
-        "User-Agent": "Mozilla/5.0",
+        "User-Agent":
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
         "Openai-Sentinel-Chat-Requirements-Token": token,
         "openai-sentinel-proof-token": proofToken,
       },
@@ -267,7 +276,10 @@ async function handleChatCompletion(req, res) {
   }
 
   // console.log('posted request');
-  console.log('----- answer received');
+  // format Date.now() to readable format:
+
+
+  console.log(`----- answer received. (${Date().toString()})`);
 
   // Set the response headers based on the request type
   if (req.body.stream) {
@@ -415,6 +427,8 @@ app.listen(port, () => {
     delete process.env.HTTP_PROXY;
     delete process.env.HTTPS_PROXY;
   }
+
+  getNewTokenIds();
 
   // let errorRetryCount = 0;
   // setTimeout(async () => {
